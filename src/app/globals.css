@@ -1,3 +1,54 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+.container {
+  padding: 20px;
+  max-width: 400px;
+  margin: auto;
+}
+
+.card {
+  background-color: #222;
+  padding: 20px;
+  border-radius: 10px;
+}
+
+.input {
+  display: block;
+  width: 100%;
+  margin-bottom: 10px;
+  padding: 8px;
+}
+
+.button {
+  width: 100%;
+  padding: 10px;
+  background: green;
+  color: white;
+  border: none;
+  border-radius: 5px;
+}
+.hover-card:hover {
+  transform: translateY(-5px) scale(1.02);
+}
+
+button:hover {
+  opacity: 0.9;
+  transform: scale(1.03);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+body {
+  animation: fadeIn 0.6s ease;
+}
+.hover-card:hover {
+  transform: translateY(-5px) scale(1.02);
+  transition: 0.3s;
+}

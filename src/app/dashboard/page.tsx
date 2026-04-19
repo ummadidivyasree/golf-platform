@@ -4,29 +4,19 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
+type Score = {
+  id: number;
+  score: number;
+  email: string;
+  created_at: string;
+};
+
 export default function Dashboard() {
   const [user, setUser] = useState<any>(null);
   const [score, setScore] = useState("");
-  const [scores, setScores] = useState<any[]>([]);
+  const [scores, setScores] = useState<Score[]>([]);
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
   const router = useRouter();
-
-  useEffect(() => {
-    const loadUser = async () => {
-      const { data } = await supabase.auth.getUser();
-
-      if (!data.user) {
-        router.push("/login");
-      } else {
-        setUser(data.user);
-        fetchScores(data.user.id);
-        fetchLeaderboard();
-      }
-    };
-
-    loadUser();
-  }, []);
 
   const fetchScores = async (userId: string) => {
     const { data } = await supabase
@@ -38,7 +28,6 @@ export default function Dashboard() {
     if (data) setScores(data);
   };
 
-  // ✅ Leaderboard (unique users)
   const fetchLeaderboard = async () => {
     const { data } = await supabase
       .from("scores")
@@ -46,10 +35,10 @@ export default function Dashboard() {
 
     if (!data) return;
 
-    const map = new Map();
+    const map = new Map<string, number>();
 
-    data.forEach((item) => {
-      if (!map.has(item.email) || map.get(item.email) < item.score) {
+    data.forEach((item: any) => {
+      if (!map.has(item.email) || map.get(item.email)! < item.score) {
         map.set(item.email, item.score);
       }
     });
@@ -64,54 +53,39 @@ export default function Dashboard() {
     setLeaderboard(result);
   };
 
-  // ✅ Add score with PRD logic
+  useEffect(() => {
+    const loadUser = async () => {
+      const { data } = await supabase.auth.getUser();
+
+      if (!data.user) router.push("/login");
+      else {
+        setUser(data.user);
+        fetchScores(data.user.id);
+        fetchLeaderboard();
+      }
+    };
+
+    loadUser();
+  }, []);
+
   const addScore = async () => {
-    const numericScore = Number(score);
-
-    // 🔴 Validation
-    if (!score || isNaN(numericScore)) {
-      alert("Enter a valid number");
-      return;
-    }
-
-    if (numericScore < 1 || numericScore > 45) {
-      alert("Score must be between 1 and 45");
-      return;
-    }
+    const num = Number(score);
+    if (!score || isNaN(num)) return alert("Enter valid score");
 
     const { data } = await supabase.auth.getUser();
     if (!data.user) return;
 
-    setLoading(true);
-
-    // 🔥 If already 5 scores → delete oldest
-    if (scores.length >= 5) {
-      const oldest = scores[scores.length - 1]; // last item = oldest
-
-      await supabase
-        .from("scores")
-        .delete()
-        .eq("id", oldest.id);
-    }
-
-    // ✅ Insert new score
-    const { error } = await supabase.from("scores").insert([
+    await supabase.from("scores").insert([
       {
         user_id: data.user.id,
         email: data.user.email,
-        score: numericScore,
+        score: num,
       },
     ]);
 
-    setLoading(false);
-
-    if (error) {
-      alert(error.message);
-    } else {
-      setScore("");
-      fetchScores(data.user.id);
-      fetchLeaderboard();
-    }
+    setScore("");
+    fetchScores(data.user.id);
+    fetchLeaderboard();
   };
 
   const handleLogout = async () => {
@@ -119,100 +93,59 @@ export default function Dashboard() {
     router.push("/login");
   };
 
-  return (
-    <div className="min-h-screen bg-black text-white p-6">
+  const total = scores.reduce((sum, s) => sum + s.score, 0);
+  const best = scores.length ? Math.max(...scores.map((s) => s.score)) : 0;
+  const least = scores.length ? Math.min(...scores.map((s) => s.score)) : 0;
 
-      {/* Header */}
-      <div className="flex justify-between mb-8">
-        <h1 className="text-2xl font-bold">Golf Dashboard 🚀</h1>
-        <button
-          onClick={handleLogout}
-          className="bg-red-500 px-4 py-2 rounded"
-        >
+  return (
+    <div style={styles.container}>
+
+      {/* HEADER */}
+      <div style={styles.header}>
+        <h2>Golf Dashboard 🚀</h2>
+        <button style={styles.logout} onClick={handleLogout}>
           Logout
         </button>
       </div>
 
-      {/* User */}
-      <div className="bg-gray-800 p-4 rounded mb-6">
-        <p>Welcome</p>
-        <h2 className="text-lg">{user?.email}</h2>
+      {/* STATS */}
+      <div style={styles.stats}>
+        <div style={styles.statBox} className="hover-card">Best: {best}</div>
+        <div style={styles.statBox} className="hover-card">Least: {least}</div>
+        <div style={styles.statBox} className="hover-card">Total: {total}</div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <Box label="Total" value={scores.length} />
-        <Box
-          label="Best"
-          value={
-            scores.length
-              ? Math.max(...scores.map((s) => s.score))
-              : "--"
-          }
+      {/* ADD SCORE */}
+      <div style={styles.card} className="hover-card">
+        <h3>Add Score</h3>
+        <input
+          style={styles.input}
+          value={score}
+          onChange={(e) => setScore(e.target.value)}
+          placeholder="Enter score"
         />
-        <Box
-          label="Latest"
-          value={scores.length ? scores[0].score : "--"}
-        />
-        <Box
-          label="Average"
-          value={
-            scores.length
-              ? Math.round(
-                  scores.reduce((a, b) => a + b.score, 0) /
-                    scores.length
-                )
-              : "--"
-          }
-        />
+        <button style={styles.button} onClick={addScore}>
+          Add
+        </button>
       </div>
 
-      {/* Add Score */}
-      <div className="bg-gray-800 p-4 rounded mb-6">
-        <h2 className="mb-2">Add Score</h2>
-
-        <div className="flex gap-2">
-          <input
-            type="number"
-            value={score}
-            onChange={(e) => setScore(e.target.value)}
-            placeholder="1 - 45"
-            className="flex-1 p-2 bg-gray-700 text-white rounded"
-          />
-
-          <button
-            onClick={addScore}
-            disabled={loading}
-            className="bg-green-500 px-4 rounded"
-          >
-            {loading ? "Adding..." : "Add"}
-          </button>
-        </div>
-      </div>
-
-      {/* Scores */}
-      <div className="bg-gray-800 p-4 rounded mb-6">
-        <h2 className="mb-2">Your Scores</h2>
-
+      {/* SCORES */}
+      <div style={styles.card} className="hover-card">
+        <h3>Your Scores</h3>
         {scores.map((s) => (
-          <div key={s.id} className="flex justify-between mb-1">
-            <span>{s.score}</span>
-            <span>
-              {new Date(s.created_at).toLocaleString("en-IN")}
-            </span>
-          </div>
+          <p key={s.id}>
+            {s.score} - {new Date(s.created_at).toLocaleString()}
+          </p>
         ))}
       </div>
 
-      {/* Leaderboard */}
-      <div className="bg-gray-800 p-4 rounded">
-        <h2 className="mb-2">Leaderboard 🏆</h2>
-
+      {/* LEADERBOARD */}
+      <div style={styles.card} className="hover-card">
+        <h3>Leaderboard</h3>
         {leaderboard.map((item, i) => (
-          <div key={i} className="flex justify-between mb-1">
-            <span>#{i + 1} {item.email}</span>
-            <span>{item.score}</span>
-          </div>
+          <p key={i}>
+            #{i + 1} {item.email} - {item.score}
+          </p>
         ))}
       </div>
 
@@ -220,11 +153,67 @@ export default function Dashboard() {
   );
 }
 
-function Box({ label, value }: any) {
-  return (
-    <div className="bg-gray-800 p-4 rounded text-center">
-      <p className="text-sm">{label}</p>
-      <h3 className="text-xl">{value}</h3>
-    </div>
-  );
-}
+const styles = {
+  container: {
+    background: "linear-gradient(135deg, #0f172a, #1e293b)",
+    minHeight: "100vh",
+    padding: "20px",
+    color: "#e2e8f0",
+  },
+
+  header: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: "20px",
+  },
+
+  logout: {
+    backgroundColor: "#ef4444",
+    color: "white",
+    border: "none",
+    padding: "6px 12px",
+    borderRadius: "6px",
+    cursor: "pointer",
+  },
+
+  stats: {
+    display: "flex",
+    gap: "10px",
+    marginBottom: "20px",
+  },
+
+  statBox: {
+    flex: 1,
+    backgroundColor: "#1e293b",
+    padding: "15px",
+    textAlign: "center" as const,
+    borderRadius: "10px",
+  },
+
+  card: {
+    backgroundColor: "#1e293b",
+    padding: "15px",
+    marginBottom: "15px",
+    borderRadius: "10px",
+  },
+
+  input: {
+    width: "100%",
+    padding: "10px",
+    marginTop: "10px",
+    marginBottom: "10px",
+    borderRadius: "8px",
+    border: "none",
+  },
+
+  button: {
+    width: "100%",
+    padding: "10px",
+    backgroundColor: "#3b82f6",
+    color: "white",
+    border: "none",
+    borderRadius: "8px",
+    cursor: "pointer",
+  },
+};

@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
+import { useRouter } from "next/navigation";
 
 export default function Signup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const router = useRouter();
 
   const handleSignup = async () => {
     const { error } = await supabase.auth.signUp({
@@ -14,50 +15,73 @@ export default function Signup() {
       password,
     });
 
-    if (error) {
-      alert(error.message);
-    } else {
-      alert("Signup successful!");
+    if (error) alert(error.message);
+    else {
+      alert("Signup successful. Please login.");
+      router.push("/login");
     }
   };
 
   return (
-    <div className="flex items-center justify-center h-screen bg-gradient-to-br from-black via-gray-900 to-black">
-      
-      <div className="w-full max-w-md p-8 rounded-2xl bg-white/10 backdrop-blur-lg border border-white/20 shadow-2xl">
-        
-        <h2 className="text-3xl font-bold text-white mb-6 text-center">
-          Create Account ✨
-        </h2>
+    <div style={styles.container}>
+      <div style={styles.box}>
+        <h2>Create Account ✨</h2>
 
         <input
+          style={styles.input}
           type="email"
           placeholder="Email"
-          className="w-full p-3 mb-4 rounded-lg bg-white/20 border border-gray-400 text-white placeholder-gray-300"
+          value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
 
         <input
+          style={styles.input}
           type="password"
           placeholder="Password"
-          className="w-full p-3 mb-4 rounded-lg bg-white/20 border border-gray-400 text-white placeholder-gray-300"
+          value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
 
-        <button
-          onClick={handleSignup}
-          className="w-full p-3 rounded-lg bg-green-600 hover:bg-green-700 text-white font-semibold shadow-lg"
-        >
-          Sign Up
+        <button style={styles.button} onClick={handleSignup}>
+          Signup
         </button>
 
-        <p className="text-gray-400 text-center mt-4 text-sm">
-          Already have an account?{" "}
-          <Link href="/login" className="text-green-400">
-            Login
-          </Link>
+        <p style={{ marginTop: "10px" }}>
+          Already have an account? <a href="/login">Login</a>
         </p>
       </div>
     </div>
   );
 }
+
+const styles = {
+  container: {
+    height: "100vh",
+    backgroundColor: "#111",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    color: "white",
+  },
+  box: {
+    backgroundColor: "#222",
+    padding: "25px",
+    borderRadius: "10px",
+    width: "300px",
+    textAlign: "center" as const,
+  },
+  input: {
+    width: "100%",
+    padding: "8px",
+    margin: "10px 0",
+  },
+  button: {
+    width: "100%",
+    padding: "10px",
+    backgroundColor: "green",
+    color: "white",
+    border: "none",
+    cursor: "pointer",
+  },
+};
